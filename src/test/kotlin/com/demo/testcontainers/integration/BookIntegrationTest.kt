@@ -5,8 +5,9 @@ import com.demo.testcontainers.integration.seeds.BookSeeds
 import com.demo.testcontainers.repository.BookRepository
 import org.json.JSONArray
 import org.json.JSONObject
-import org.junit.Assert
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -43,6 +44,7 @@ class BookIntegrationTest : BaseIntegrationTest() {
         val response = mockMvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk)
         val jsonArray = JSONArray(response.andReturn().response.contentAsString)
 
+        // Http verification
         assertEquals(jsonArray.length(), 3)
     }
 
@@ -52,9 +54,10 @@ class BookIntegrationTest : BaseIntegrationTest() {
         val response = mockMvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk)
         val jsonObject = JSONObject(response.andReturn().response.contentAsString)
 
-        Assert.assertEquals(jsonObject.get("id"), bookId.toString())
-        Assert.assertEquals(jsonObject.get("title"), "Title 1")
-        Assert.assertEquals(jsonObject.get("author"), "Author 1")
+        // Http verification
+        assertEquals(jsonObject.get("id"), bookId.toString())
+        assertEquals(jsonObject.get("title"), "Title 1")
+        assertEquals(jsonObject.get("author"), "Author 1")
     }
 
     @Test
@@ -74,9 +77,15 @@ class BookIntegrationTest : BaseIntegrationTest() {
         val response = mockMvc.perform(request).andExpect(MockMvcResultMatchers.status().isCreated)
         val jsonObject = JSONObject(response.andReturn().response.contentAsString)
 
-        Assert.assertNotNull(jsonObject.get("id"))
-        Assert.assertEquals(jsonObject.get("title"), "A title")
-        Assert.assertEquals(jsonObject.get("author"), "An author")
+        // Http json verification
+        assertNotNull(jsonObject.get("id"))
+        assertEquals(jsonObject.get("title"), "A title")
+        assertEquals(jsonObject.get("author"), "An author")
+
+        // Database verification
+        val book = bookRepository.findById(UUID.fromString(jsonObject.get("id").toString()))
+        assertEquals(book.get().title, "A title")
+        assertEquals(book.get().author, "An author")
     }
 
     @Test
@@ -96,14 +105,23 @@ class BookIntegrationTest : BaseIntegrationTest() {
         val response = mockMvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk)
         val jsonObject = JSONObject(response.andReturn().response.contentAsString)
 
-        Assert.assertEquals(jsonObject.get("id"), bookId.toString())
-        Assert.assertEquals(jsonObject.get("title"), "Updated title")
-        Assert.assertEquals(jsonObject.get("author"), "Updated author")
+        assertEquals(jsonObject.get("id"), bookId.toString())
+        assertEquals(jsonObject.get("title"), "Updated title")
+        assertEquals(jsonObject.get("author"), "Updated author")
+
+        // Database verification
+        val book = bookRepository.findById(UUID.fromString(jsonObject.get("id").toString()))
+        assertEquals(book.get().title, "Updated title")
+        assertEquals(book.get().author, "Updated author")
     }
 
     @Test
     fun `should delete book by id`() {
         val request = MockMvcRequestBuilders.delete("/books/$bookId")
         mockMvc.perform(request).andExpect(MockMvcResultMatchers.status().isNoContent)
+
+        // Database verification
+        val bookExists = bookRepository.existsById(bookId)
+        assertFalse(bookExists)
     }
 }
